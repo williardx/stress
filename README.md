@@ -7,7 +7,7 @@ Stress is currently a prototype Rails API for handling ecommerce orders at Artsy
 * State: development
 * Production: 
 * Staging: 
-* GitHub: [https://github.com/artsy/stress/][stress]
+* GitHub: https://github.com/artsy/stress/
 * Point People: [@ashkan18][ashkan18]
 
 ## Setup
