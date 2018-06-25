@@ -10,7 +10,7 @@ class Mutations::FinalizeOrder < Mutations::BaseMutation
     order = Order.find(id)
     validate_request!(order)
     {
-      order: OrderService.finalize!(order),
+      order: OrderService.finalize!(order, context[:current_user]['id']),
       errors: []
     }
   rescue Errors::ApplicationError => e

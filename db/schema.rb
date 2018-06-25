@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2018_06_25_123034) do
+ActiveRecord::Schema.define(version: 2018_06_26_201815) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -25,6 +25,15 @@ ActiveRecord::Schema.define(version: 2018_06_25_123034) do
     t.jsonb "artwork_snapshot"
     t.integer "quantity", default: 1, null: false
     t.index ["order_id"], name: "index_line_items_on_order_id"
+  end
+
+  create_table "order_histories", force: :cascade do |t|
+    t.bigint "order_id"
+    t.string "modifier_id", null: false
+    t.jsonb "changed_fields", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["order_id"], name: "index_order_histories_on_order_id"
   end
 
   create_table "orders", force: :cascade do |t|
@@ -47,4 +56,5 @@ ActiveRecord::Schema.define(version: 2018_06_25_123034) do
   end
 
   add_foreign_key "line_items", "orders"
+  add_foreign_key "order_histories", "orders"
 end

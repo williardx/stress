@@ -10,7 +10,7 @@ class Mutations::RejectOrder < Mutations::BaseMutation
     order = Order.find(id)
     validate_request!(order)
     {
-      order: OrderService.reject!(order),
+      order: OrderService.reject!(order, context[:current_user]['id']),
       errors: []
     }
   rescue Errors::ApplicationError => e

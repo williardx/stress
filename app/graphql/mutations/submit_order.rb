@@ -11,7 +11,7 @@ class Mutations::SubmitOrder < Mutations::BaseMutation
     order = Order.find(id)
     validate_request!(order)
     {
-      order: OrderService.submit!(order, credit_card_id: credit_card_id),
+      order: OrderService.submit!(order, context[:current_user]['id'], credit_card_id: credit_card_id),
       errors: []
     }
   rescue Errors::ApplicationError => e
