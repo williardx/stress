@@ -57,6 +57,7 @@ module OrderService
     Order.transaction do
       order.abandon!
       order.save!
+      RecordHistoryService.create!(order, user_id, state: order.state)
     end
   end
 
