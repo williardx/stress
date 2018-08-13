@@ -6,6 +6,7 @@ describe Api::GraphqlController, type: :request do
     let(:partner_id) { jwt_partner_ids.first }
     let(:user_id) { jwt_user_id }
     let(:credit_card_id) { 'gravity-cc-1' }
+    let(:credit_card) { { external_id: 'card-1', customer_account: { external_id: 'cust-1' } } }
     let(:order) { Fabricate(:order, partner_id: partner_id, user_id: user_id) }
 
     let(:mutation) do
@@ -55,12 +56,15 @@ describe Api::GraphqlController, type: :request do
       end
 
       it 'sets payments on the order' do
+        expect(GravityService).to receive(:get_credit_card).and_return(credit_card)
         response = client.execute(mutation, set_payment_input)
         expect(response.data.set_payment.order.id).to eq order.id.to_s
         expect(response.data.set_payment.order.state).to eq 'PENDING'
         expect(response.data.set_payment.order.credit_card_id).to eq 'gravity-cc-1'
         expect(response.data.set_payment.errors).to match []
         expect(order.reload.credit_card_id).to eq credit_card_id
+        expect(order.reload.external_credit_card_id).to eq credit_card[:external_id]
+        expect(order.reload.external_customer_id).to eq credit_card[:customer_account][:external_id]
         expect(order.state).to eq Order::PENDING
         expect(order.state_expires_at).to eq(order.state_updated_at + 2.days)
       end

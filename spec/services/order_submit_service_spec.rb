@@ -5,18 +5,17 @@ require 'support/gravity_helper'
 describe OrderSubmitService, type: :services do
   let(:partner_id) { 'partner-1' }
   let(:credit_card_id) { 'cc-1' }
-  let(:order) { Fabricate(:order, partner_id: partner_id, credit_card_id: credit_card_id, fulfillment_type: Order::PICKUP) }
+  let(:order) { Fabricate(:order, partner_id: partner_id, credit_card_id: credit_card_id, fulfillment_type: Order::PICKUP, external_credit_card_id: 'card-1', external_customer_id: 'cust-1') }
   let!(:line_items) { [Fabricate(:line_item, order: order, price_cents: 2000_00), Fabricate(:line_item, order: order, price_cents: 8000_00)] }
-  let(:credit_card) { { external_id: 'card-1', customer_account: { external_id: 'cust-1' }, deactivated_at: nil } }
   let(:merchant_account_id) { 'ma-1' }
   let(:charge_success) { { id: 'ch-1' } }
   let(:charge_failure) { { failure_message: 'some_error' } }
   let(:partner_merchant_accounts) { [{ external_id: 'ma-1' }, { external_id: 'some_account' }] }
   let(:authorize_charge_params) do
     {
-      source_id: credit_card[:external_id],
+      source_id: order.external_credit_card_id,
       destination_id: merchant_account_id,
-      customer_id: credit_card[:customer_account][:external_id],
+      customer_id: order.external_customer_id,
       amount: order.buyer_total_cents,
       currency_code: order.currency_code
     }
@@ -28,7 +27,6 @@ describe OrderSubmitService, type: :services do
         before(:each) do
           ActiveJob::Base.queue_adapter = :test
           allow(GravityService).to receive(:get_merchant_account).with(partner_id).and_return(partner_merchant_accounts.first)
-          allow(GravityService).to receive(:get_credit_card).with(credit_card_id).and_return(credit_card)
           allow(PaymentService).to receive(:authorize_charge).with(authorize_charge_params).and_return(charge_success)
           allow(TransactionService).to receive(:create_success!).with(order, charge_success)
           allow(Adapters::GravityV1).to receive(:request).with("/partner/#{partner_id}/all").and_return(gravity_v1_partner)
@@ -71,28 +69,12 @@ describe OrderSubmitService, type: :services do
       context 'with an unsuccessful transaction' do
         it 'creates a record of the transaction' do
           allow(GravityService).to receive(:get_merchant_account).with(partner_id).and_return(partner_merchant_accounts.first)
-          allow(GravityService).to receive(:get_credit_card).with(credit_card_id).and_return(credit_card)
           allow(PaymentService).to receive(:authorize_charge).with(authorize_charge_params).and_raise(Errors::PaymentError.new('some_error', charge_failure))
           allow(TransactionService).to receive(:create_failure!).with(order, charge_failure)
           expect { OrderSubmitService.submit!(order) }.to raise_error(Errors::PaymentError)
           expect(TransactionService).to have_received(:create_failure!).with(order, charge_failure)
         end
       end
-    end
-  end
-
-  describe '#validate_credit_card!' do
-    it 'raises an error if the credit card does not have an external id' do
-      expect { OrderSubmitService.validate_credit_card!(customer_account: { external_id: 'cust-1' }, deactivated_at: nil) }.to raise_error(Errors::OrderError)
-    end
-
-    it 'raises an error if the credit card does not have a customer id' do
-      expect { OrderSubmitService.validate_credit_card!(external_id: 'cc-1') }.to raise_error(Errors::OrderError)
-      expect { OrderSubmitService.validate_credit_card!(external_id: 'cc-1', customer_account: { some_prop: 'some_val' }, deactivated_at: nil) }.to raise_error(Errors::OrderError)
-    end
-
-    it 'raises an error if the card is deactivated' do
-      expect { OrderSubmitService.validate_credit_card!(external_id: 'cc-1', customer_account: { external_id: 'cust-1' }, deactivated_at: 'today') }.to raise_error(Errors::OrderError)
     end
   end
 

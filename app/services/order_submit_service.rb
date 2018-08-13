@@ -2,14 +2,10 @@ module OrderSubmitService
   def self.submit!(order, by: nil)
     # verify price change?
     raise Errors::OrderError, "Missing info for submitting order(#{order.id})" unless can_submit?(order)
-
     merchant_account = GravityService.get_merchant_account(order.partner_id)
-    credit_card = GravityService.get_credit_card(order.credit_card_id)
-    validate_credit_card!(credit_card)
-
     charge_params = {
-      source_id: credit_card[:external_id],
-      customer_id: credit_card[:customer_account][:external_id],
+      source_id: order.external_credit_card_id,
+      customer_id: order.external_customer_id,
       destination_id: merchant_account[:external_id],
       amount: order.buyer_total_cents,
       currency_code: order.currency_code
@@ -30,12 +26,6 @@ module OrderSubmitService
     TransactionService.create_failure!(order, e.body)
     Rails.logger.error("Could not submit order #{order.id}: #{e.message}")
     raise e
-  end
-
-  def self.validate_credit_card!(credit_card)
-    raise Errors::OrderError, 'Credit card does not have external id' if credit_card[:external_id].blank?
-    raise Errors::OrderError, 'Credit card does not have customer id' if credit_card.dig(:customer_account, :external_id).blank?
-    raise Errors::OrderError, 'Credit card is deactivated' unless credit_card[:deactivated_at].nil?
   end
 
   def self.can_submit?(order)

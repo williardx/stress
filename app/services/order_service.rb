@@ -2,7 +2,13 @@ module OrderService
   def self.set_payment!(order, credit_card_id:)
     raise Errors::OrderError, 'Cannot set payment info on non-pending orders' unless order.state == Order::PENDING
     Order.transaction do
-      order.update!(credit_card_id: credit_card_id)
+      credit_card = GravityService.get_credit_card(credit_card_id)
+      validate_credit_card!(credit_card)
+      order.update!(
+        credit_card_id: credit_card_id,
+        external_credit_card_id: credit_card[:external_id],
+        external_customer_id: credit_card[:customer_account][:external_id]
+      )
     end
     order
   end
@@ -78,5 +84,11 @@ module OrderService
 
   def self.valid_currency_code?(currency_code)
     Order::SUPPORTED_CURRENCIES.include?(currency_code.downcase)
+  end
+
+  def self.validate_credit_card!(credit_card)
+    raise Errors::OrderError, 'Credit card does not have external id' if credit_card[:external_id].blank?
+    raise Errors::OrderError, 'Credit card does not have customer id' if credit_card.dig(:customer_account, :external_id).blank?
+    raise Errors::OrderError, 'Credit card is deactivated' unless credit_card[:deactivated_at].nil?
   end
 end

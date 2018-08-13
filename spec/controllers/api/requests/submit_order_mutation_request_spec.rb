@@ -10,13 +10,14 @@ describe Api::GraphqlController, type: :request do
     let(:user_id) { jwt_user_id }
     let(:credit_card_id) { 'cc-1' }
     let(:merchant_account) { { external_id: 'ma-1' } }
-    let(:credit_card) { { external_id: stripe_customer.default_source, customer_account: { external_id: stripe_customer.id } } }
     let(:order) do
       Fabricate(
         :order,
         partner_id: partner_id,
         user_id: user_id,
         credit_card_id: credit_card_id,
+        external_credit_card_id: stripe_customer.default_source,
+        external_customer_id: stripe_customer.id,
         shipping_address_line1: '12 Vanak St',
         shipping_address_line2: 'P 80',
         shipping_city: 'Tehran',
@@ -92,7 +93,6 @@ describe Api::GraphqlController, type: :request do
         end
         it 'returns error' do
           allow(GravityService).to receive(:get_merchant_account).and_return(merchant_account)
-          allow(GravityService).to receive(:get_credit_card).and_return(credit_card)
           response = client.execute(mutation, submit_order_input)
           expect(response.data.submit_order.errors).to include 'Invalid action on this approved order'
           expect(order.reload.state).to eq Order::APPROVED
@@ -101,7 +101,6 @@ describe Api::GraphqlController, type: :request do
 
       it 'submits the order' do
         expect(GravityService).to receive(:get_merchant_account).and_return(merchant_account)
-        expect(GravityService).to receive(:get_credit_card).and_return(credit_card)
         expect(Adapters::GravityV1).to receive(:request).with("/partner/#{partner_id}/all").and_return(gravity_v1_partner)
         response = client.execute(mutation, submit_order_input)
         expect(response.data.submit_order.order.id).to eq order.id.to_s
