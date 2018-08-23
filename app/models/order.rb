@@ -90,7 +90,7 @@ class Order < ApplicationRecord
 
   def update_state_timestamps
     self.state_updated_at = Time.now.utc
-    self.send("#{self.state}_at=", Time.now.utc) unless self.state == Order::PENDING
+    send("#{state}_at=", Time.now.utc) unless state == Order::PENDING
     self.state_expires_at = STATE_EXPIRATIONS.key?(state) ? state_updated_at + STATE_EXPIRATIONS[state] : nil
   end
 
