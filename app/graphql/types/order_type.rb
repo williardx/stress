@@ -22,6 +22,10 @@ class Types::OrderType < Types::BaseObject
   field :state_updated_at, Types::DateTimeType, null: true
   field :state_expires_at, Types::DateTimeType, null: true
   field :line_items, Types::LineItemType.connection_type, null: true
+  field :submitted_at, Types::DateTimeType, null: true
+  field :approved_at, Types::DateTimeType, null: true
+  field :rejected_at, Types::DateTimeType, null: true
+  field :fulfilled_at, Types::DateTimeType, null: true
 
   def fulfillment
     # fulfillment is not a field on order so we have to resolve it here
