@@ -69,6 +69,7 @@ describe Api::GraphqlController, type: :request do
           expect(order.reload.state).to eq Order::APPROVED
           expect(order.reload.transactions.last.external_id).to eq uncaptured_charge.id
           expect(order.reload.transactions.last.transaction_type).to eq Transaction::CAPTURE
+          expect(order.reload.approved_at).not_to be_nil
         end.to change(order, :state_expires_at)
       end
 

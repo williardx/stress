@@ -93,6 +93,7 @@ describe Api::GraphqlController, type: :request do
           end
           expect(response.data.fulfill_at_once.errors).to match []
           expect(order.reload.state).to eq Order::FULFILLED
+          expect(order.fulfilled_at).not_to be_nil
           order.line_items.each do |li|
             expect(li.fulfillments.count).to eq 1
             expect(li.fulfillments.first.courier).to eq 'FedEx'

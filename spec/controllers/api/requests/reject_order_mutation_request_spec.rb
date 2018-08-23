@@ -65,6 +65,7 @@ describe Api::GraphqlController, type: :request do
         expect(order.reload.state).to eq Order::REJECTED
         expect(order.transactions.last.external_id).to_not eq nil
         expect(order.transactions.last.transaction_type).to eq Transaction::REFUND
+        expect(order.rejected_at).to_not be_nil
       end
     end
   end
