@@ -39,6 +39,13 @@ class SalesTaxService
     raise Errors::OrderError, e.message
   end
 
+  def refund_transaction(refund_date)
+    transaction = get_transaction(transaction_id)
+    post_refund(refund_date) if transaction.present?
+  rescue Taxjar::Error => e
+    raise Errors::OrderError, e.message
+  end
+
   def artsy_should_remit_taxes?
     return false unless destination_address[:country] == 'US'
     REMITTING_STATES.include? destination_address[:state].downcase
@@ -50,12 +57,29 @@ class SalesTaxService
     @tax_client.tax_for_order(construct_tax_params)
   end
 
+  def get_transaction(id)
+    @tax_client.show_order(id)
+  rescue Taxjar::Error::NotFound
+    nil
+  end
+
   def post_transaction
     transaction_date = @line_item.order.last_approved_at.iso8601
     @tax_client.create_order(
       construct_tax_params(
         transaction_id: transaction_id,
         transaction_date: transaction_date,
+        sales_tax: UnitConverter.convert_cents_to_dollars(@line_item.sales_tax_cents)
+      )
+    )
+  end
+
+  def post_refund(refund_date)
+    @tax_client.create_refund(
+      construct_tax_params(
+        transaction_id: "#{transaction_id}_refund",
+        transaction_date: refund_date.iso8601,
+        transaction_reference_id: transaction_id,
         sales_tax: UnitConverter.convert_cents_to_dollars(@line_item.sales_tax_cents)
       )
     )
@@ -76,6 +100,10 @@ class SalesTaxService
       to_street: destination_address[:address],
       shipping: UnitConverter.convert_cents_to_dollars(@shipping_total_cents)
     }.merge(args)
+  end
+
+  def transaction_id
+    "#{@line_item.order_id}-#{@line_item.id}"
   end
 
   def origin_address
