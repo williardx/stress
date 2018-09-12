@@ -47,27 +47,22 @@ class SalesTaxService
   private
 
   def fetch_sales_tax
-    @tax_client.tax_for_order(
-      amount: UnitConverter.convert_cents_to_dollars(@line_item.total_amount_cents),
-      from_country: origin_address[:country],
-      from_zip: origin_address[:postal_code],
-      from_state: origin_address[:state],
-      from_city: origin_address[:city],
-      from_street: origin_address[:address],
-      to_country: destination_address[:country],
-      to_zip: destination_address[:postal_code],
-      to_state: destination_address[:state],
-      to_city: destination_address[:city],
-      to_street: destination_address[:address],
-      shipping: UnitConverter.convert_cents_to_dollars(@shipping_total_cents)
-    )
+    @tax_client.tax_for_order(construct_tax_params)
   end
 
   def post_transaction
     transaction_date = @line_item.order.last_approved_at.iso8601
     @tax_client.create_order(
-      transaction_id: "#{@line_item.order_id}-#{@line_item.id}",
-      transaction_date: transaction_date,
+      construct_tax_params(
+        transaction_id: transaction_id,
+        transaction_date: transaction_date,
+        sales_tax: UnitConverter.convert_cents_to_dollars(@line_item.sales_tax_cents)
+      )
+    )
+  end
+
+  def construct_tax_params(args = {})
+    {
       amount: UnitConverter.convert_cents_to_dollars(@line_item.total_amount_cents),
       from_country: origin_address[:country],
       from_zip: origin_address[:postal_code],
@@ -79,9 +74,8 @@ class SalesTaxService
       to_state: destination_address[:state],
       to_city: destination_address[:city],
       to_street: destination_address[:address],
-      sales_tax: UnitConverter.convert_cents_to_dollars(@line_item.sales_tax_cents),
       shipping: UnitConverter.convert_cents_to_dollars(@shipping_total_cents)
-    )
+    }.merge(args)
   end
 
   def origin_address
